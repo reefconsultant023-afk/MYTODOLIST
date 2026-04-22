@@ -18,7 +18,12 @@ import {
   PencilLine,
   Check,
   LogOut,
-  LogIn
+  LogIn,
+  Calendar as CalendarIcon,
+  LayoutGrid,
+  ChevronRight,
+  ChevronLeft,
+  Clock
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -59,6 +64,7 @@ interface Task {
   category: 'urgent_important' | 'urgent_not_important' | 'not_urgent_important' | 'not_urgent_not_important';
   completed: boolean;
   createdAt: number;
+  date?: string; // YYYY-MM-DD
   startTime?: string;
   endTime?: string;
   userId: string;
@@ -78,6 +84,8 @@ export default function App() {
   const [inputValue, setInputValue] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState<Task['category']>('urgent_important');
+  const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
@@ -85,6 +93,7 @@ export default function App() {
   const [endTime, setEndTime] = useState('');
   const [editingStartTime, setEditingStartTime] = useState('');
   const [editingEndTime, setEditingEndTime] = useState('');
+  const [editingDate, setEditingDate] = useState('');
   const [editingCategory, setEditingCategory] = useState<Task['category'] | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [subTaskInputs, setSubTaskInputs] = useState<Record<string, string>>({});
@@ -97,6 +106,19 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const safeFormatDate = (dateStr: string | undefined, options: Intl.DateTimeFormatOptions) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '';
+      return new Intl.DateTimeFormat('ar-EG', options).format(d);
+    } catch (e) {
+      return '';
+    }
+  };
 
   // Sync with Firestore
   useEffect(() => {
@@ -144,6 +166,7 @@ export default function App() {
       category: selectedCategory,
       completed: false,
       createdAt: Date.now(),
+      date: viewMode === 'calendar' ? selectedDate : new Date().toISOString().split('T')[0],
       startTime: startTime || "",
       endTime: endTime || "",
       userId: user.uid,
@@ -228,6 +251,7 @@ export default function App() {
     setEditingText(task.text);
     setEditingStartTime(task.startTime || '');
     setEditingEndTime(task.endTime || '');
+    setEditingDate(task.date || '');
     setEditingCategory(task.category);
   };
 
@@ -236,23 +260,26 @@ export default function App() {
     setEditingText('');
     setEditingStartTime('');
     setEditingEndTime('');
+    setEditingDate('');
     setEditingCategory(null);
   };
 
   const updateTask = async () => {
-    if (!editingTaskId || !editingText.trim() || !editingCategory) return;
+    if (!editingTaskId || !editingText.trim() || !editingCategory || !editingDate) return;
     
     try {
       await updateDoc(doc(db, 'tasks', editingTaskId), { 
         text: editingText.trim(),
         startTime: editingStartTime || "",
         endTime: editingEndTime || "",
+        date: editingDate,
         category: editingCategory
       });
       setEditingTaskId(null);
       setEditingText('');
       setEditingStartTime('');
       setEditingEndTime('');
+      setEditingDate('');
       setEditingCategory(null);
     } catch (error) {
       console.error("Error updating task", error);
@@ -267,13 +294,32 @@ export default function App() {
   };
 
   const filteredTasks = tasks.filter(t => {
+    if (viewMode === 'calendar') {
+      return t.date === selectedDate;
+    }
     if (activeTab === 'all') return true;
     if (activeTab === 'active') return !t.completed;
     if (activeTab === 'completed') return t.completed;
     return t.category === activeTab;
+  }).sort((a, b) => {
+    if (viewMode === 'calendar' && a.startTime && b.startTime) {
+      return a.startTime.localeCompare(b.startTime);
+    }
+    return b.createdAt - a.createdAt;
   });
 
   const today = new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+
+  const generateDays = () => {
+    const todayDate = new Date();
+    const days = [];
+    for (let i = -7; i <= 21; i++) {
+      const d = new Date();
+      d.setDate(todayDate.getDate() + i);
+      days.push(d.toISOString().split('T')[0]);
+    }
+    return days;
+  };
 
   if (!isLoaded) return null;
 
@@ -312,13 +358,27 @@ export default function App() {
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
           <div className="space-y-1">
             <h1 className="text-3xl md:text-4xl font-bold text-[#0F172A] tracking-tight font-heading">
-              مساحة التفريغ الذهني
+              {viewMode === 'calendar' ? 'جدول المواعيد' : 'مساحة التفريغ الذهني'}
             </h1>
             <p className="text-[#64748B] text-base md:text-lg">
-              أهلاً {user.displayName}، اليوم هو {today}
+              {viewMode === 'calendar' 
+                ? `مهام يوم ${safeFormatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}`
+                : `أهلاً ${user.displayName}، اليوم هو ${today}`
+              }
             </p>
           </div>
           <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setViewMode(viewMode === 'grid' ? 'calendar' : 'grid')}
+              className="border-[#E2E8F0] text-[#64748B] hover:bg-[#F1F5F9] rounded-full px-4 h-10 transition-all font-medium"
+            >
+              {viewMode === 'grid' ? (
+                <><CalendarIcon className="ml-2 w-4 h-4" /> التقويم</>
+              ) : (
+                <><LayoutGrid className="ml-2 w-4 h-4" /> مصفوفة</>
+              )}
+            </Button>
             <Button 
               variant="outline" 
               onClick={handleLogout}
@@ -336,6 +396,55 @@ export default function App() {
 
         {/* Input Area */}
         <div className="mb-16 space-y-4">
+          {viewMode === 'calendar' && (
+            <div className="flex flex-col gap-4 mb-8">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+                  <Clock className="w-4 h-4" /> الجدول الزمني لليوم
+                </h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-bold"
+                >
+                  العودة لليوم
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-[#64748B] overflow-x-auto no-scrollbar pb-2 touch-pan-x">
+                {generateDays().map((dayStr) => {
+                  const d = new Date(dayStr);
+                  const isSelected = selectedDate === dayStr;
+                  const isToday = new Date().toISOString().split('T')[0] === dayStr;
+                  
+                  return (
+                    <button
+                      key={dayStr}
+                      onClick={() => setSelectedDate(dayStr)}
+                      className={cn(
+                        "flex flex-col items-center justify-center min-w-[60px] h-20 rounded-2xl transition-all border",
+                        isSelected 
+                          ? "bg-[#0F172A] text-white border-[#0F172A] shadow-lg scale-105" 
+                          : "bg-white text-[#64748B] border-[#F1F5F9] hover:border-[#E2E8F0]"
+                      )}
+                    >
+                      <span className="text-[10px] opacity-70 mb-1">
+                        {new Intl.DateTimeFormat('ar-EG', { weekday: 'short' }).format(d)}
+                      </span>
+                      <span className="text-xl font-bold">{d.getDate()}</span>
+                      {isToday && !isSelected && <div className="w-1 h-1 bg-[#0F172A] rounded-full mt-1" />}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="text-center">
+                <span className="text-sm font-bold text-[#0F172A]">
+                  {safeFormatDate(selectedDate, { dateStyle: 'full' })}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="relative group">
             <input
               type="text"
@@ -453,9 +562,18 @@ export default function App() {
                         <Card className="h-full border-[#F1F5F9] shadow-[0_1px_3px_rgba(0,0,0,0.05)] rounded-2xl flex flex-col group-hover:shadow-lg transition-all duration-300">
                           <CardContent className="p-6 flex flex-col h-full">
                             <div className="flex justify-between items-start mb-4">
-                              <span className="text-[11px] uppercase tracking-widest text-[#94A3B8] font-bold">
-                                {CategoryInfo.name}
-                              </span>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[11px] uppercase tracking-widest text-[#94A3B8] font-bold">
+                                  {CategoryInfo.name}
+                                </span>
+                                {viewMode === 'calendar' && task.startTime && (
+                                  <div className="flex items-center gap-1.5 text-[#0F172A] font-bold text-sm bg-indigo-50 w-fit px-2 py-0.5 rounded-lg border border-indigo-100">
+                                    <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                                    <span>{task.startTime}</span>
+                                    {task.endTime && <span className="opacity-40">- {task.endTime}</span>}
+                                  </div>
+                                )}
+                              </div>
                                 <div className="flex gap-1 md:gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                   {!isEditing && (
                                     <Button
@@ -519,20 +637,30 @@ export default function App() {
                                   className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 text-lg text-[#334155] outline-none focus:border-[#0F172A] resize-none"
                                   rows={3}
                                 />
-                                <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 py-1 w-fit">
-                                  <input
-                                    type="time"
-                                    value={editingStartTime}
-                                    onChange={(e) => setEditingStartTime(e.target.value)}
-                                    className="bg-transparent border-none outline-none text-xs text-[#334155]"
-                                  />
-                                  <span className="text-xs">إلى</span>
-                                  <input
-                                    type="time"
-                                    value={editingEndTime}
-                                    onChange={(e) => setEditingEndTime(e.target.value)}
-                                    className="bg-transparent border-none outline-none text-xs text-[#334155]"
-                                  />
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 py-1">
+                                    <input
+                                      type="time"
+                                      value={editingStartTime}
+                                      onChange={(e) => setEditingStartTime(e.target.value)}
+                                      className="bg-transparent border-none outline-none text-xs text-[#334155]"
+                                    />
+                                    <span className="text-xs">إلى</span>
+                                    <input
+                                      type="time"
+                                      value={editingEndTime}
+                                      onChange={(e) => setEditingEndTime(e.target.value)}
+                                      className="bg-transparent border-none outline-none text-xs text-[#334155]"
+                                    />
+                                  </div>
+                                  <div className="flex items-center bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 py-1">
+                                    <input
+                                      type="date"
+                                      value={editingDate}
+                                      onChange={(e) => setEditingDate(e.target.value)}
+                                      className="bg-transparent border-none outline-none text-xs text-[#334155] font-bold"
+                                    />
+                                  </div>
                                 </div>
                                 <div className="flex flex-wrap gap-1.5 mt-2">
                                   {CATEGORIES.map((cat) => (
@@ -624,7 +752,14 @@ export default function App() {
                             )}
                             
                             <div className="mt-auto pt-4 flex justify-between items-center text-[13px] text-[#94A3B8]">
-                              <span>منذ {Math.floor((Date.now() - task.createdAt) / 60000)} دقيقة</span>
+                              <div className="flex flex-col gap-0.5">
+                                <span>منذ {Math.floor((Date.now() - task.createdAt) / 60000)} دقيقة</span>
+                                {task.date && task.date !== todayStr && (
+                                  <span className="text-[10px] font-bold text-indigo-500">
+                                    {safeFormatDate(task.date, { dateStyle: 'medium' })}
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center">
                                 <span className={cn(
                                   "w-2 h-2 rounded-full ml-2",
@@ -639,8 +774,15 @@ export default function App() {
                     );
                   })
                 ) : (
-                  <div className="col-span-full py-20 text-center">
-                    <p className="text-[#CBD5E1] text-lg">لا توجد مهام حالياً...</p>
+                  <div className="col-span-full py-20 text-center bg-white/40 rounded-3xl border-2 border-dashed border-slate-100">
+                    <p className="text-[#CBD5E1] text-lg">
+                      {viewMode === 'calendar' 
+                        ? 'لا توجد مهام مجدولة لهذا اليوم...'
+                        : 'لا توجد مهام حالياً...'}
+                    </p>
+                    {viewMode === 'calendar' && (
+                      <p className="text-sm text-slate-400 mt-2">اكتب مهمة جديدة بالأعلى لتنظيم يومك</p>
+                    )}
                   </div>
                 )}
               </AnimatePresence>
