@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A task dump object in the Eisenhower matrix",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The task content" },
+        "category": { 
+          "type": "string", 
+          "enum": ["urgent_important", "urgent_not_important", "not_urgent_important", "not_urgent_not_important"],
+          "description": "Eisenhower matrix category" 
+        },
+        "completed": { "type": "boolean", "description": "Completion status" },
+        "createdAt": { "type": "number", "description": "Timestamp of creation" },
+        "startTime": { "type": "string", "description": "Optional start time in 24h format" },
+        "endTime": { "type": "string", "description": "Optional end time in 24h format" },
+        "userId": { "type": "string", "description": "The owner of the task" },
+        "subTasks": {
+          "type": "array",
+          "description": "List of small sub-tasks inside this main task",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "text": { "type": "string" },
+              "completed": { "type": "boolean" }
+            }
+          }
+        }
+      },
+      "required": ["text", "category", "completed", "createdAt", "userId"]
+    }
+  },
+  "firestore": {
+    "tasks": {
+      "schema": "Task",
+      "description": "Collection of user-created tasks"
+    }
+  }
+}
