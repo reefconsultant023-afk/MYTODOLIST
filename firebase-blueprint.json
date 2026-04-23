@@ -14,6 +14,7 @@
         "completed": { "type": "boolean", "description": "Completion status" },
         "createdAt": { "type": "number", "description": "Timestamp of creation" },
         "date": { "type": "string", "description": "Scheduled date in YYYY-MM-DD format" },
+        "domain": { "type": "string", "enum": ["work", "personal"], "description": "The category of the task (Work or Personal)" },
         "startTime": { "type": "string", "description": "Optional start time in 24h format" },
         "endTime": { "type": "string", "description": "Optional end time in 24h format" },
         "userId": { "type": "string", "description": "The owner of the task" },

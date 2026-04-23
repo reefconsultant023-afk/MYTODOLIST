@@ -23,7 +23,10 @@ import {
   LayoutGrid,
   ChevronRight,
   ChevronLeft,
-  Clock
+  Clock,
+  Briefcase,
+  Heart,
+  User as UserIcon
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -62,6 +65,7 @@ interface Task {
   id: string;
   text: string;
   category: 'urgent_important' | 'urgent_not_important' | 'not_urgent_important' | 'not_urgent_not_important';
+  domain: 'work' | 'personal';
   completed: boolean;
   createdAt: number;
   date?: string; // YYYY-MM-DD
@@ -78,12 +82,19 @@ const CATEGORIES = [
   { id: 'not_urgent_not_important', name: 'غير عاجل غير مهم', icon: BrainCircuit, color: 'text-slate-500', bg: 'bg-slate-50' },
 ] as const;
 
+const DOMAINS = [
+  { id: 'work', name: 'عمل', icon: Briefcase, color: 'text-blue-600', bg: 'bg-blue-50' },
+  { id: 'personal', name: 'حياة شخصية', icon: Heart, color: 'text-pink-600', bg: 'bg-pink-50' },
+] as const;
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [activeDomainTab, setActiveDomainTab] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState<Task['category']>('urgent_important');
+  const [selectedDomain, setSelectedDomain] = useState<Task['domain']>('work');
   const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -95,6 +106,7 @@ export default function App() {
   const [editingEndTime, setEditingEndTime] = useState('');
   const [editingDate, setEditingDate] = useState('');
   const [editingCategory, setEditingCategory] = useState<Task['category'] | null>(null);
+  const [editingDomain, setEditingDomain] = useState<Task['domain'] | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [subTaskInputs, setSubTaskInputs] = useState<Record<string, string>>({});
 
@@ -164,6 +176,7 @@ export default function App() {
     const newTask: Omit<Task, 'id'> = {
       text: inputValue.trim(),
       category: selectedCategory,
+      domain: selectedDomain,
       completed: false,
       createdAt: Date.now(),
       date: viewMode === 'calendar' ? selectedDate : new Date().toISOString().split('T')[0],
@@ -253,6 +266,7 @@ export default function App() {
     setEditingEndTime(task.endTime || '');
     setEditingDate(task.date || '');
     setEditingCategory(task.category);
+    setEditingDomain(task.domain);
   };
 
   const cancelEditing = () => {
@@ -262,10 +276,11 @@ export default function App() {
     setEditingEndTime('');
     setEditingDate('');
     setEditingCategory(null);
+    setEditingDomain(null);
   };
 
   const updateTask = async () => {
-    if (!editingTaskId || !editingText.trim() || !editingCategory || !editingDate) return;
+    if (!editingTaskId || !editingText.trim() || !editingCategory || !editingDomain || !editingDate) return;
     
     try {
       await updateDoc(doc(db, 'tasks', editingTaskId), { 
@@ -273,7 +288,8 @@ export default function App() {
         startTime: editingStartTime || "",
         endTime: editingEndTime || "",
         date: editingDate,
-        category: editingCategory
+        category: editingCategory,
+        domain: editingDomain
       });
       setEditingTaskId(null);
       setEditingText('');
@@ -281,6 +297,7 @@ export default function App() {
       setEditingEndTime('');
       setEditingDate('');
       setEditingCategory(null);
+      setEditingDomain(null);
     } catch (error) {
       console.error("Error updating task", error);
     }
@@ -297,6 +314,10 @@ export default function App() {
     if (viewMode === 'calendar') {
       return t.date === selectedDate;
     }
+    
+    // Domain Filter
+    if (activeDomainTab !== 'all' && t.domain !== activeDomainTab) return false;
+
     if (activeTab === 'all') return true;
     if (activeTab === 'active') return !t.completed;
     if (activeTab === 'completed') return t.completed;
@@ -491,13 +512,33 @@ export default function App() {
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
                   className={cn(
-                    "px-3 py-1 rounded-full text-[10px] font-semibold tracking-wider uppercase transition-all border",
+                    "px-3 py-1.5 rounded-full text-[10px] font-semibold tracking-wider uppercase transition-all border flex items-center gap-2",
                     selectedCategory === cat.id 
-                      ? "bg-[#0F172A] text-white border-[#0F172A]" 
+                      ? "bg-[#0F172A] text-white border-[#0F172A] shadow-md scale-105" 
                       : "bg-white text-[#94A3B8] border-[#F1F5F9] hover:border-[#E2E8F0]"
                   )}
                 >
+                  <cat.icon className="w-3 h-3" />
                   {cat.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2 border-t border-[#F1F5F9] pt-4">
+              <span className="text-[10px] font-bold text-[#94A3B8] uppercase w-full mb-1">المجال:</span>
+              {DOMAINS.map((dom) => (
+                <button
+                  key={dom.id}
+                  onClick={() => setSelectedDomain(dom.id)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all border flex items-center gap-2",
+                    selectedDomain === dom.id 
+                      ? `${dom.bg} ${dom.color} border-current shadow-sm scale-105` 
+                      : "bg-white text-[#94A3B8] border-[#F1F5F9] hover:border-[#E2E8F0]"
+                  )}
+                >
+                  <dom.icon className="w-3.5 h-3.5" />
+                  {dom.name}
                 </button>
               ))}
             </div>
@@ -506,19 +547,47 @@ export default function App() {
 
         {/* Tasks Grid */}
         <div className="flex-grow space-y-8">
-           <div className="flex flex-col gap-4 border-b border-[#E2E8F0] pb-2">
-              <div className="flex items-center justify-between">
+           <div className="flex flex-col gap-4 border-b border-[#E2E8F0] pb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-2 text-[#64748B]">
                   <Filter className="w-4 h-4" />
                   <span className="text-xs font-bold uppercase tracking-wider">تصفية حسب:</span>
                 </div>
-                <Button 
-                  variant="link" 
-                  onClick={clearCompleted}
-                  className="text-[#64748B] p-0 h-auto hover:text-rose-600 transition-colors text-xs font-bold"
-                >
-                  مسح المكتمل
-                </Button>
+                
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex bg-slate-100 p-1 rounded-xl">
+                    <button
+                      onClick={() => setActiveDomainTab('all')}
+                      className={cn(
+                        "px-3 py-1 rounded-lg text-xs font-bold transition-all",
+                        activeDomainTab === 'all' ? "bg-white text-[#0F172A] shadow-sm" : "text-[#64748B] hover:text-[#0F172A]"
+                      )}
+                    >
+                      الكل
+                    </button>
+                    {DOMAINS.map(dom => (
+                      <button
+                        key={dom.id}
+                        onClick={() => setActiveDomainTab(dom.id)}
+                        className={cn(
+                          "px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                          activeDomainTab === dom.id ? "bg-white text-[#0F172A] shadow-sm" : "text-[#64748B] hover:text-[#0F172A]"
+                        )}
+                      >
+                        <dom.icon className="w-3 h-3" />
+                        {dom.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  <Button 
+                    variant="link" 
+                    onClick={clearCompleted}
+                    className="text-[#64748B] p-0 h-auto hover:text-rose-600 transition-colors text-xs font-bold"
+                  >
+                    مسح المكتمل
+                  </Button>
+                </div>
               </div>
 
               <div className="overflow-x-auto no-scrollbar -mx-6 px-6 touch-pan-x">
@@ -548,6 +617,7 @@ export default function App() {
                 {filteredTasks.length > 0 ? (
                   filteredTasks.map((task) => {
                     const CategoryInfo = CATEGORIES.find(c => c.id === task.category) || CATEGORIES[0];
+                    const DomainInfo = DOMAINS.find(d => d.id === task.domain) || DOMAINS[0];
                     const isEditing = editingTaskId === task.id;
 
                     return (
@@ -562,10 +632,19 @@ export default function App() {
                         <Card className="h-full border-[#F1F5F9] shadow-[0_1px_3px_rgba(0,0,0,0.05)] rounded-2xl flex flex-col group-hover:shadow-lg transition-all duration-300">
                           <CardContent className="p-6 flex flex-col h-full">
                             <div className="flex justify-between items-start mb-4">
-                              <div className="flex flex-col gap-1">
-                                <span className="text-[11px] uppercase tracking-widest text-[#94A3B8] font-bold">
-                                  {CategoryInfo.name}
-                                </span>
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] uppercase tracking-widest text-[#94A3B8] font-bold">
+                                    {CategoryInfo.name}
+                                  </span>
+                                  <div className={cn(
+                                    "flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase",
+                                    DomainInfo.bg, DomainInfo.color
+                                  )}>
+                                    <DomainInfo.icon className="w-2.5 h-2.5" />
+                                    {DomainInfo.name}
+                                  </div>
+                                </div>
                                 {viewMode === 'calendar' && task.startTime && (
                                   <div className="flex items-center gap-1.5 text-[#0F172A] font-bold text-sm bg-indigo-50 w-fit px-2 py-0.5 rounded-lg border border-indigo-100">
                                     <Clock className="w-3.5 h-3.5 text-indigo-600" />
@@ -675,6 +754,24 @@ export default function App() {
                                       )}
                                     >
                                       {cat.name}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <div className="flex flex-wrap gap-1.5 mt-2 border-t border-[#F1F5F9] pt-2">
+                                  {DOMAINS.map((dom) => (
+                                    <button
+                                      key={dom.id}
+                                      onClick={() => setEditingDomain(dom.id)}
+                                      className={cn(
+                                        "px-2 py-1 rounded-lg text-[10px] font-bold transition-all border flex items-center gap-1.5",
+                                        editingDomain === dom.id 
+                                          ? `${dom.bg} ${dom.color} border-current`
+                                          : "bg-white text-[#94A3B8] border-[#F1F5F9] hover:border-[#E2E8F0]"
+                                      )}
+                                    >
+                                      <dom.icon className="w-3 h-3" />
+                                      {dom.name}
                                     </button>
                                   ))}
                                 </div>
