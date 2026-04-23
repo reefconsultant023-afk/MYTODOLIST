@@ -264,9 +264,9 @@ export default function App() {
     setEditingText(task.text);
     setEditingStartTime(task.startTime || '');
     setEditingEndTime(task.endTime || '');
-    setEditingDate(task.date || '');
+    setEditingDate(task.date || todayStr);
     setEditingCategory(task.category);
-    setEditingDomain(task.domain);
+    setEditingDomain(task.domain || 'work');
   };
 
   const cancelEditing = () => {
@@ -280,16 +280,19 @@ export default function App() {
   };
 
   const updateTask = async () => {
-    if (!editingTaskId || !editingText.trim() || !editingCategory || !editingDomain || !editingDate) return;
+    const finalDate = editingDate || todayStr;
+    const finalDomain = editingDomain || 'work';
+
+    if (!editingTaskId || !editingText.trim() || !editingCategory) return;
     
     try {
       await updateDoc(doc(db, 'tasks', editingTaskId), { 
         text: editingText.trim(),
         startTime: editingStartTime || "",
         endTime: editingEndTime || "",
-        date: editingDate,
+        date: finalDate,
         category: editingCategory,
-        domain: editingDomain
+        domain: finalDomain
       });
       setEditingTaskId(null);
       setEditingText('');

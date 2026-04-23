@@ -21,11 +21,16 @@ service cloud.firestore {
 
     function isValidTask(data) {
       return data.keys().hasAll(['text', 'category', 'completed', 'createdAt', 'userId'])
-        && data.text is string 
+        && data.text is string && data.text.size() <= 1000
         && data.category in ['urgent_important', 'urgent_not_important', 'not_urgent_important', 'not_urgent_not_important']
         && data.completed is bool
         && data.createdAt is number
-        && data.userId == request.auth.uid;
+        && data.userId == request.auth.uid
+        && (!('domain' in data) || data.domain in ['work', 'personal'])
+        && (!('date' in data) || data.date is string)
+        && (!('startTime' in data) || data.startTime is string)
+        && (!('endTime' in data) || data.endTime is string)
+        && (!('subTasks' in data) || data.subTasks is list);
     }
 
     match /tasks/{taskId} {
