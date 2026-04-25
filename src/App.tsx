@@ -497,14 +497,14 @@ export default function App() {
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="bg-transparent border-none outline-none text-xs text-[#334155]"
+                  className="bg-transparent border-none outline-none text-base text-[#334155]"
                 />
                 <span className="text-xs">إلى</span>
                 <input
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="bg-transparent border-none outline-none text-xs text-[#334155]"
+                  className="bg-transparent border-none outline-none text-base text-[#334155]"
                 />
               </div>
             </div>
@@ -725,14 +725,14 @@ export default function App() {
                                       type="time"
                                       value={editingStartTime}
                                       onChange={(e) => setEditingStartTime(e.target.value)}
-                                      className="bg-transparent border-none outline-none text-xs text-[#334155]"
+                                      className="bg-transparent border-none outline-none text-base text-[#334155]"
                                     />
                                     <span className="text-xs">إلى</span>
                                     <input
                                       type="time"
                                       value={editingEndTime}
                                       onChange={(e) => setEditingEndTime(e.target.value)}
-                                      className="bg-transparent border-none outline-none text-xs text-[#334155]"
+                                      className="bg-transparent border-none outline-none text-base text-[#334155]"
                                     />
                                   </div>
                                   <div className="flex items-center bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 py-1">
@@ -740,7 +740,7 @@ export default function App() {
                                       type="date"
                                       value={editingDate}
                                       onChange={(e) => setEditingDate(e.target.value)}
-                                      className="bg-transparent border-none outline-none text-xs text-[#334155] font-bold"
+                                      className="bg-transparent border-none outline-none text-base text-[#334155] font-bold"
                                     />
                                   </div>
                                 </div>
@@ -838,7 +838,7 @@ export default function App() {
                                       value={subTaskInputs[task.id] || ''}
                                       onChange={(e) => setSubTaskInputs(prev => ({ ...prev, [task.id]: e.target.value }))}
                                       onKeyDown={(e) => e.key === 'Enter' && addSubTask(task.id)}
-                                      className="w-full bg-transparent border-none border-b border-[#E2E8F0] focus:border-[#0F172A] text-sm py-2 outline-none text-[#475569] transition-colors placeholder:text-[#CBD5E1]"
+                                      className="w-full bg-transparent border-none border-b border-[#E2E8F0] focus:border-[#0F172A] text-base py-2 outline-none text-[#475569] transition-colors placeholder:text-[#CBD5E1]"
                                     />
                                     <button 
                                       onClick={() => addSubTask(task.id)}
